@@ -266,6 +266,32 @@ function updateCounts() {
     set('extra-utm-count', count(CFG.extraUtms));
 }
 
+// ───────────── Генерация статы ─────────────
+
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8VjyJZxaBdAhRT-DVJVcEmKaY2as2ROE6MKVINEmmdDhPI4as5phxDbi7p4NpVFEuUQ/exec';
+
+function saveToGoogleSheets(payload, result) {
+  const data = {
+    email: payload.user_email.trim(),
+    utm_source: payload.utm_source || '',
+    utm_medium: payload.utm_medium || '',
+    utm_campaign: result.campaign_debug || '',
+    utm_content: payload.utm_content || '',
+    utm_term: payload.utm_term || '',
+    final_url: result.final_url
+  };
+
+  return fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify(data)
+  });
+}
+
+
 // ───────────── Отправка ─────────────
 
 function sendData() {
@@ -291,6 +317,7 @@ function sendData() {
 
     try {
         const result = buildLink(payload);
+        saveToGoogleSheets(payload, result);
         const box = document.getElementById('result-box');
         box.style.display = 'block';
         document.getElementById('final_url').value = result.final_url;
