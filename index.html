@@ -25,21 +25,35 @@
 
         <div class="mb-6">
             <label class="label-text">Базовый URL *</label>
-            <input type="text" id="base_url" placeholder="https://m2.ru/..." class="input-field">
+            <input type="text" id="base_url" value="https://m2.ru" placeholder="https://m2.ru/..." class="input-field">
         </div>
 
-        <div id="main-utm-fields" ></div>
-
-        <div class="section-divider"></div>
-
-        <div style="background: #f8fafc; padding: 20px; border-left: 4px solid #1e40af; border-radius: 0 8px 8px 0;">
-            <h3 style="font-size: 12px; font-weight: 800; color: #1e40af; margin-bottom: 16px; letter-spacing: 0.05em;">utm_campaign</h3>
-            <div id="campaign-fields" ></div>
+        <div class="flow-box">
+            <h3 class="box-title">Направление трафика</h3>
+            <div id="direction-field"></div>
+            <div id="option-field"></div>
+            <div id="flow-utm-fields"></div>
         </div>
 
-        <div id="extra-utm-fields" class="mt-8"></div>
+        <div class="campaign-box">
+            <h3 class="box-title">utm_campaign</h3>
+            <div class="group-title group-title-required">Обязательные сущности</div>
+            <div id="campaign-required-fields"></div>
+
+            <details class="toggle" id="campaign-optional">
+                <summary>Необязательные сущности <span class="toggle-count" id="campaign-optional-count"></span></summary>
+                <div id="campaign-optional-fields" class="toggle-body"></div>
+            </details>
+        </div>
+
+        <details class="toggle toggle-standalone" id="extra-utm">
+            <summary>Дополнительные UTM-метки <span class="toggle-hint">utm_content, utm_term</span> <span class="toggle-count" id="extra-utm-count"></span></summary>
+            <div id="extra-utm-fields" class="toggle-body"></div>
+        </details>
 
         <button onclick="sendData()" class="btn-primary mt-10 shadow-lg">СГЕНЕРИРОВАТЬ ССЫЛКУ</button>
+
+        <div id="form-message" class="status-bar" style="display: none; margin-top: 16px; margin-bottom: 0;"></div>
 
         <div id="result-box" style="display: none;" class="mt-10 border-t-2 pt-8">
             <div class="mb-8">

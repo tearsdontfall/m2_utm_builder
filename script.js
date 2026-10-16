@@ -1,10 +1,8 @@
 const CFG = window.UTM_CONFIG;
 
-const MAIN_UTMS = ['utm_source', 'utm_medium'];
-const EXTRA_UTMS = ['utm_content', 'utm_term'];
-const CAMPAIGN_REQUIRED = ['agency', 'campaign_type', 'funnel_stage', 'product', 'target_audience', 'sub_type'];
-const OPTIONAL_ORDER = ['region', 'event', 'device', 'placements', 'ad_type', 'flight', 'creative_pack', 'free_text'];
 const EMAIL_KEY = 'utm_builder_email';
+const toList = v => (Array.isArray(v) ? v : [v]);
+const labelOf = key => (CFG.labels && CFG.labels[key]) || key;
 
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -64,6 +62,15 @@ function unlock() {
     showStatus('Доступ открыт', 'success');
 }
 
+// ───────────── Потоки ─────────────
+
+function findFlow(direction) {
+    return CFG.flows.find(f => f.direction === direction) || null;
+}
+function findOption(flow, label) {
+    return flow ? (flow.options.find(o => o.label === label) || null) : null;
+}
+
 function buildLink(data) {
     if (!isAllowed(data.user_email)) {
         throw new Error('Доступ запрещён: e-mail не в списке разрешённых');
@@ -74,22 +81,28 @@ function buildLink(data) {
         throw new Error('Базовый URL должен начинаться с http:// или https://');
     }
 
-    for (const key of CFG.strictDictionary) {
-        const list = CFG.dictionaries[key] || [];
-        if (!list.includes(data[key])) {
-            throw new Error(`Недопустимый ${key}: ${data[key] || '(пусто)'}`);
-        }
+    // utm_source / utm_medium / фиксированные сущности должны соответствовать выбранному потоку
+    const flow = findFlow(data.direction);
+    if (!flow) throw new Error(`Неизвестное направление: ${data.direction || '(пусто)'}`);
+    const option = findOption(flow, data.flow_option);
+    if (!option) throw new Error(`Не выбрано: ${flow.question}`);
+    if (!toList(option.utm_source).includes(data.utm_source)) {
+        throw new Error(`Недопустимый utm_source: ${data.utm_source || '(пусто)'}`);
+    }
+    if (!toList(option.utm_medium).includes(data.utm_medium)) {
+        throw new Error(`Недопустимый utm_medium: ${data.utm_medium || '(пусто)'}`);
+    }
+    for (const [key, val] of Object.entries(option.fixed || {})) {
+        if (data[key] !== val) throw new Error(`${labelOf(key)} для этого направления фиксирован: ${val}`);
     }
 
     const parts = [];
-    for (const key of CAMPAIGN_REQUIRED) {
+    for (const key of CFG.campaignParts) {
         const v = slugify(data[key]);
-        if (v === null) throw new Error(`Некорректное значение ${key}`);
-        parts.push(v);
-    }
-    for (const key of OPTIONAL_ORDER) {
-        const v = slugify(data[key]);
-        if (v) {
+        if (CFG.required.includes(key)) {
+            if (v === null) throw new Error(`Некорректное значение: ${labelOf(key)}`);
+            parts.push(v);
+        } else if (v) {
             const prefix = CFG.prefixes[key];
             parts.push(prefix ? `${prefix}-${v}` : v);
         }
@@ -111,50 +124,164 @@ function buildLink(data) {
     return { final_url: `${baseUrl}${sep}${query}`, campaign_debug: campaign };
 }
 
-function renderBlock(fieldList, containerId) {
-    const container = document.getElementById(containerId);
-    fieldList.forEach(name => {
+// ───────────── Отрисовка полей ─────────────
+
+function fieldHtml({ id, label, required, values, freeText, disabledText }) {
+    let input;
+    if (values) {
+        input = `<select id="${id}" class="input-field" style="background-color: white;">
+            <option value="">${escapeHtml(disabledText || '-- Выберите --')}</option>
+            ${values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('')}
+        </select>`;
+    } else if (freeText) {
+        input = `<input type="text" id="${id}" class="input-field" placeholder="...">`;
+    } else {
+        input = `<input type="text" id="${id}" class="input-field" readonly placeholder="${escapeHtml(disabledText || '')}">`;
+    }
+    return `<label class="label-text field-label" for="${id}" style="${required ? 'color: #2563eb;' : ''}">
+            <span>${escapeHtml(label)}${required ? ' ●' : ''}</span><span class="tag-auto">авто</span>
+        </label>${input}`;
+}
+
+function addField(container, opts) {
+    const div = document.createElement('div');
+    div.className = 'field';
+    div.id = `field-${opts.id}`;
+    div.innerHTML = fieldHtml(opts);
+    container.appendChild(div);
+    return div;
+}
+
+function renderCampaignFields() {
+    const req = document.getElementById('campaign-required-fields');
+    const opt = document.getElementById('campaign-optional-fields');
+    CFG.campaignParts.forEach(name => {
         const isRequired = CFG.required.includes(name);
         const isFreeText = CFG.freeText.includes(name);
         const values = CFG.dictionaries[name];
         const hasData = values && values.length > 0;
+        addField(isRequired ? req : opt, {
+            id: name, label: labelOf(name), required: isRequired,
+            values: !isFreeText && hasData ? values : null,
+            freeText: isFreeText || !hasData,
+        });
+    });
+    const extra = document.getElementById('extra-utm-fields');
+    CFG.extraUtms.forEach(name => addField(extra, { id: name, label: name, freeText: true }));
+}
 
-        const div = document.createElement('div');
-        div.style.marginBottom = '16px';
+function renderDirection() {
+    const box = document.getElementById('direction-field');
+    addField(box, { id: 'direction', label: 'Направление', required: true, values: CFG.flows.map(f => f.direction) });
+    document.getElementById('direction').addEventListener('change', onDirectionChange);
+    renderOption(null);
+}
 
-        let inputHtml;
-        if (!isFreeText && hasData) {
-            inputHtml = `
-                <select id="${name}" class="input-field" style="background-color: white;">
-                    <option value="">-- Выберите --</option>
-                    ${values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('')}
-                </select>`;
-        } else {
-            inputHtml = `<input type="text" id="${name}" class="input-field" placeholder="...">`;
+// Второй вопрос потока (площадка / где размещается / тип рассылки)
+function renderOption(flow) {
+    const box = document.getElementById('option-field');
+    box.innerHTML = '';
+    if (!flow) { renderFlowUtm(null, null); return; }
+    addField(box, { id: 'flow_option', label: flow.question, required: true, values: flow.options.map(o => o.label) });
+    const sel = document.getElementById('flow_option');
+    sel.addEventListener('change', () => applyOption(flow, findOption(flow, sel.value)));
+    if (flow.options.length === 1) sel.value = flow.options[0].label;
+    applyOption(flow, findOption(flow, sel.value));
+}
+
+// utm_source / utm_medium: одно значение — подставляется автоматом, несколько — выбор
+function renderFlowUtm(flow, option) {
+    const box = document.getElementById('flow-utm-fields');
+    box.innerHTML = '';
+    const defs = [
+        { id: 'utm_source', label: 'utm_source' },
+        { id: 'utm_medium', label: (flow && flow.mediumLabel) ? `${flow.mediumLabel} · utm_medium` : 'utm_medium' },
+    ];
+    defs.forEach(d => {
+        const val = option ? option[d.id] : null;
+        const list = val ? toList(val) : null;
+        const multi = list && list.length > 1;
+        const wrap = addField(box, {
+            id: d.id, label: d.label, required: true,
+            values: multi ? list : null,
+            disabledText: option ? '-- Выберите --' : 'Сначала выберите направление',
+        });
+        const el = wrap.querySelector('.input-field');
+        if (list && !multi) {
+            el.value = list[0];
+            el.classList.add('is-auto');
+            wrap.classList.add('is-auto');
         }
-
-        div.innerHTML = `
-            <label class="label-text" style="${isRequired ? 'color: #2563eb;' : ''}">
-                ${name} ${isRequired ? '●' : ''}
-            </label>
-            ${inputHtml}`;
-        container.appendChild(div);
     });
 }
+
+// Фиксированные сущности utm_campaign: предзаполняются и блокируются
+function applyFixed(option) {
+    const fixed = (option && option.fixed) || {};
+    CFG.campaignParts.forEach(name => {
+        const el = document.getElementById(name);
+        const wrap = document.getElementById(`field-${name}`);
+        if (!el || !wrap) return;
+        if (name in fixed) {
+            const v = fixed[name];
+            if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === v)) {
+                el.add(new Option(v, v));
+            }
+            el.value = v;
+            el.disabled = true;
+            el.dataset.auto = '1';
+            wrap.classList.add('is-auto');
+            const details = wrap.closest('details');
+            if (details) details.open = true;
+        } else if (el.dataset.auto === '1') {
+            el.disabled = false;
+            el.value = '';
+            delete el.dataset.auto;
+            wrap.classList.remove('is-auto');
+        }
+    });
+    updateCounts();
+}
+
+function applyOption(flow, option) {
+    renderFlowUtm(flow, option);
+    applyFixed(option);
+}
+
+function onDirectionChange() {
+    renderOption(findFlow(document.getElementById('direction').value));
+}
+
+function updateCounts() {
+    const count = ids => ids.filter(id => {
+        const el = document.getElementById(id);
+        return el && el.value.trim();
+    }).length;
+    const set = (elId, n) => {
+        const el = document.getElementById(elId);
+        el.textContent = n ? `заполнено: ${n}` : '';
+        el.classList.toggle('has-value', n > 0);
+    };
+    set('campaign-optional-count', count(CFG.campaignParts.filter(n => !CFG.required.includes(n))));
+    set('extra-utm-count', count(CFG.extraUtms));
+}
+
+// ───────────── Отправка ─────────────
 
 function sendData() {
     const emailEl = document.getElementById('user_email');
     const payload = { user_email: emailEl.value, base_url: document.getElementById('base_url').value };
 
     let hasError = false;
-    CFG.required.forEach(id => {
+    const requiredIds = ['direction', 'flow_option', 'utm_source', 'utm_medium', ...CFG.required];
+    requiredIds.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         if (!el.value.trim()) { el.classList.add('input-error'); hasError = true; }
         else el.classList.remove('input-error');
     });
     if (hasError) {
-        showStatus('Заполните все обязательные поля (отмечены синим)', 'error');
+        showFormMessage('Заполните все обязательные поля (отмечены синим)', 'error');
         return;
     }
 
@@ -170,9 +297,9 @@ function sendData() {
         document.getElementById('campaign_debug').value = result.campaign_debug;
         box.scrollIntoView({ behavior: 'smooth' });
         try { localStorage.setItem(EMAIL_KEY, emailEl.value.trim()); } catch (e) { /* file:// может блокировать */ }
-        showStatus('Ссылка успешно сгенерирована', 'success');
+        showFormMessage('Ссылка успешно сгенерирована', 'success');
     } catch (err) {
-        showStatus(err.message, 'error');
+        showFormMessage(err.message, 'error');
     }
 }
 
@@ -192,8 +319,13 @@ function copyToClipboard(id, btn) {
     }
 }
 
-function showStatus(text, type) {
-    const status = document.getElementById('status-message');
+function showFormMessage(text, type) {
+    showStatus(text, type, 'form-message');
+    document.getElementById('form-message').style.display = 'block';
+}
+
+function showStatus(text, type, id = 'status-message') {
+    const status = document.getElementById(id);
     status.innerText = text;
     if (type === 'error') { status.style.background = '#fef2f2'; status.style.color = '#991b1b'; }
     else if (type === 'success') { status.style.background = '#f0fdf4'; status.style.color = '#166534'; }
@@ -205,9 +337,11 @@ function init() {
         showStatus('Ошибка: не найден config.js', 'error');
         return;
     }
-    renderBlock(MAIN_UTMS, 'main-utm-fields');
-    renderBlock(CFG.campaignParts, 'campaign-fields');
-    renderBlock(EXTRA_UTMS, 'extra-utm-fields');
+    renderDirection();
+    renderCampaignFields();
+    // счётчики заполненных полей в раскрывающихся блоках
+    document.getElementById('app-fields').addEventListener('input', updateCounts);
+    document.getElementById('app-fields').addEventListener('change', updateCounts);
     document.getElementById('user_email').addEventListener('keydown', e => {
         if (e.key === 'Enter' && document.getElementById('app-fields').disabled) unlock();
     });
