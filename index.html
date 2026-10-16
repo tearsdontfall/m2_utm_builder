@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>M2 UTM Builder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="form-container">
+        <h1 style="font-size: 24px; font-weight: 800; color: #0f172a; margin-bottom: 8px; text-align: center;">UTM Конструктор</h1>
+        <p style="text-align: center; color: #64748b; font-size: 14px; margin-bottom: 32px;">Генерация ссылок по стандартам M2</p>
+        
+        <div id="status-message" class="status-bar" style="background: #eff6ff; color: #1e40af;">Инициализация системы...</div>
+
+        <div class="mb-6">
+            <label class="label-text">Ваш e-mail *</label>
+            <input type="email" id="user_email" placeholder="name@m2.ru" class="input-field">
+            <button type="button" id="unlock-btn" onclick="unlock()" class="btn-copy">Войти</button>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <fieldset id="app-fields" disabled>
+
+        <div class="mb-6">
+            <label class="label-text">Базовый URL *</label>
+            <input type="text" id="base_url" placeholder="https://m2.ru/..." class="input-field">
+        </div>
+
+        <div id="main-utm-fields" ></div>
+
+        <div class="section-divider"></div>
+
+        <div style="background: #f8fafc; padding: 20px; border-left: 4px solid #1e40af; border-radius: 0 8px 8px 0;">
+            <h3 style="font-size: 12px; font-weight: 800; color: #1e40af; margin-bottom: 16px; letter-spacing: 0.05em;">utm_campaign</h3>
+            <div id="campaign-fields" ></div>
+        </div>
+
+        <div id="extra-utm-fields" class="mt-8"></div>
+
+        <button onclick="sendData()" class="btn-primary mt-10 shadow-lg">СГЕНЕРИРОВАТЬ ССЫЛКУ</button>
+
+        <div id="result-box" style="display: none;" class="mt-10 border-t-2 pt-8">
+            <div class="mb-8">
+                <label class="label-text" style="color: #0f172a;">Готовая ссылка</label>
+                <textarea id="final_url" readonly class="input-field" style="height: 100px; background: #f1f5f9; font-family: monospace; font-size: 13px;"></textarea>
+                <button onclick="copyToClipboard('final_url', this)" class="btn-copy">Копировать URL</button>
+            </div>
+
+            <div>
+                <label class="label-text" style="color: #0f172a;">Campaign для кабинета</label>
+                <input type="text" id="campaign_debug" readonly class="input-field" style="background: #f1f5f9; font-family: monospace; font-size: 13px;">
+                <button onclick="copyToClipboard('campaign_debug', this)" class="btn-copy">Копировать Campaign</button>
+            </div>
+        </div>
+        </fieldset>
+    </div>
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
