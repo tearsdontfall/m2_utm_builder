@@ -317,6 +317,7 @@ function sendData() {
 
     try {
         const result = buildLink(payload);
+        console.log('Отправка в Google Sheets', payload, result);
         saveToGoogleSheets(payload, result);
         const box = document.getElementById('result-box');
         box.style.display = 'block';
