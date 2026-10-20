@@ -2,7 +2,9 @@
 window.UTM_CONFIG = {
     // Разрешённые e-mail. Пустой список [] = проверка отключена.
     allowedUsers: [
-        "knolss"
+        "knolss",
+        "litvinovpo",
+        "petrovpd"
     ],
 
     // ───────────── Потоки разметки (вкладка new_entities) ─────────────
