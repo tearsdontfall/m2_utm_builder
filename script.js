@@ -2,6 +2,8 @@ const CFG = window.UTM_CONFIG;
 
 const EMAIL_KEY = 'utm_builder_email';
 const toList = v => (Array.isArray(v) ? v : [v]);
+// Элемент словаря: строка или { label: "человеческое значение", value: "код в метке" }
+const asOption = v => (typeof v === 'object' ? v : { label: v, value: v });
 const labelOf = key => (CFG.labels && CFG.labels[key]) || key;
 
 function escapeHtml(s) {
@@ -109,6 +111,15 @@ function buildLink(data) {
     }
     const campaign = parts.join('_');
 
+    const sep = baseUrl.includes('?') ? '&' : '?';
+
+    // Медийка/Performance с рекламными макросами: utm_campaign/content/term берутся из шаблона площадки
+    const macros = option.macros && CFG.macroTemplates && CFG.macroTemplates[option.macros];
+    if (macros) {
+        const head = `utm_source=${quotePlus(data.utm_source)}&utm_medium=${quotePlus(data.utm_medium)}`;
+        return { final_url: `${baseUrl}${sep}${head}${macros}`, campaign_debug: campaign };
+    }
+
     const params = [
         ['utm_source', data.utm_source],
         ['utm_medium', data.utm_medium],
@@ -120,7 +131,6 @@ function buildLink(data) {
     if (c) params.push(['utm_content', c]);
 
     const query = params.map(([k, v]) => `${quotePlus(k)}=${quotePlus(v)}`).join('&');
-    const sep = baseUrl.includes('?') ? '&' : '?';
     return { final_url: `${baseUrl}${sep}${query}`, campaign_debug: campaign };
 }
 
@@ -131,7 +141,10 @@ function fieldHtml({ id, label, required, values, freeText, disabledText }) {
     if (values) {
         input = `<select id="${id}" class="input-field" style="background-color: white;">
             <option value="">${escapeHtml(disabledText || '-- Выберите --')}</option>
-            ${values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('')}
+            ${values.map(v => {
+                const o = asOption(v);
+                return `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`;
+            }).join('')}
         </select>`;
     } else if (freeText) {
         input = `<input type="text" id="${id}" class="input-field" placeholder="...">`;
@@ -225,7 +238,8 @@ function applyFixed(option) {
         if (name in fixed) {
             const v = fixed[name];
             if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === v)) {
-                el.add(new Option(v, v));
+                const known = (CFG.dictionaries[name] || []).map(asOption).find(o => o.value === v);
+                el.add(new Option(known ? known.label : v, v));
             }
             el.value = v;
             el.disabled = true;
@@ -243,9 +257,22 @@ function applyFixed(option) {
     updateCounts();
 }
 
+// При макросах utm_content / utm_term задаёт шаблон площадки — скрываем поля и чистим значения
+function toggleExtraUtms(hidden) {
+    document.getElementById('extra-utm').style.display = hidden ? 'none' : '';
+    if (hidden) {
+        CFG.extraUtms.forEach(name => {
+            const el = document.getElementById(name);
+            if (el) el.value = '';
+        });
+        updateCounts();
+    }
+}
+
 function applyOption(flow, option) {
     renderFlowUtm(flow, option);
     applyFixed(option);
+    toggleExtraUtms(!!(option && option.macros));
 }
 
 function onDirectionChange() {
