@@ -29,16 +29,20 @@ function quotePlus(s) {
         .replace(/%20/g, '+');
 }
 
-function isAllowed(email) {
+function normalizeLogin(login) {
+    return (login || '').trim().replace(/^@+/, '').toLowerCase();
+}
+
+function isAllowed(login) {
     if (!CFG.allowedUsers.length) return true;
-    const e = (email || '').trim().toLowerCase();
-    return CFG.allowedUsers.some(u => u.toLowerCase() === e);
+    const normalized = normalizeLogin(login);
+    return CFG.allowedUsers.some(u => normalizeLogin(u) === normalized);
 }
 
 function setLocked(locked) {
     document.getElementById('app-fields').disabled = locked;
     document.getElementById('unlock-btn').style.display = 'block';
-    document.getElementById('unlock-btn').innerText = locked ? 'Войти' : 'Сменить e-mail';
+    document.getElementById('unlock-btn').innerText = locked ? 'Войти' : 'Сменить логин';
 }
 
 function unlock() {
@@ -51,12 +55,12 @@ function unlock() {
         try { localStorage.removeItem(EMAIL_KEY); } catch (e) { /* ignore */ }
         emailEl.value = '';
         emailEl.focus();
-        showStatus('Введите e-mail из списка разрешённых', 'info');
+        showStatus('Введите логин из списка разрешённых', 'info');
         return;
     }
     if (!isAllowed(emailEl.value)) {
         setLocked(true);
-        showStatus('Доступ запрещён: e-mail не в списке разрешённых', 'error');
+        showStatus('Доступ запрещён: логин не в списке разрешённых', 'error');
         return;
     }
     try { localStorage.setItem(EMAIL_KEY, emailEl.value.trim()); } catch (e) { /* ignore */ }
@@ -75,7 +79,7 @@ function findOption(flow, label) {
 
 function buildLink(data) {
     if (!isAllowed(data.user_email)) {
-        throw new Error('Доступ запрещён: e-mail не в списке разрешённых');
+        throw new Error('Доступ запрещён: логин не в списке разрешённых');
     }
 
     const baseUrl = (data.base_url || '').trim();
@@ -401,7 +405,7 @@ function init() {
         if (e.key === 'Enter' && document.getElementById('app-fields').disabled) unlock();
     });
     setLocked(true);
-    showStatus('Введите e-mail из списка разрешённых', 'info');
+    showStatus('Введите логин из списка разрешённых', 'info');
     try {
         const saved = localStorage.getItem(EMAIL_KEY);
         if (saved && isAllowed(saved)) {

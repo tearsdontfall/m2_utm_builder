@@ -1,10 +1,40 @@
 // Конфигурация UTM-конструктора. Правится вручную.
 window.UTM_CONFIG = {
-    // Разрешённые e-mail. Пустой список [] = проверка отключена.
+    // Разрешённые логины (без @). Пустой список [] = проверка отключена.
     allowedUsers: [
         "knolss",
+        "ah",
+        "mishinads",
+        "ustinovaas",
+        "dementievaea",
+        "gorbea",
+        "morozovakk",
+        "shuklinoviv",
+        "ereminaoa",
+        "ermolovaam",
+        "kocherginavi",
+        "ilyinavo",
+        "rostovskaiaav",
+        "ryabukhaka",
+        "tretiakovaev",
+        "ozhogovalm",
+        "popkovid",
+        "radchenkoyai",
+        "umanetsmy",
+        "kurkinaaa",
         "litvinovpo",
-        "petrovpd"
+        "naumovay",
+        "volkovaoi",
+        "zizinaod",
+        "solovyovaeg",
+        "umabaevadh",
+        "kolesnikaa",
+        "belkovda",
+        "katrenkola",
+        "nazarovaiv",
+        "petrovpd",
+        "poberezhnyukap",
+        "taninaas"
     ],
 
     // ───────────── Потоки разметки (вкладка new_entities) ─────────────
