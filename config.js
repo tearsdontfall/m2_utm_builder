@@ -57,6 +57,7 @@ window.UTM_CONFIG = {
                 { label: "Яндекс Промостраницы", macros: "yandex_promopages", utm_source: "performance_yandex.promopages", utm_medium: ["cpc", "cpm", "cpt", "cpa"], fixed: {} },
                 { label: "Telegram Ads", utm_source: "performance_tg_ads", utm_medium: ["cpc", "cpm", "cpt", "cpa"], fixed: {} },
                 { label: "Astralab", utm_source: "performance_astralab", utm_medium: ["cpc", "cpm", "cpt", "cpa"], fixed: {} },
+                { label: "MTS RCS", utm_source: "performance_mtsads_rcs", utm_medium: ["cpc", "cpm", "cpt", "cpa"], fixed: {} },
             ]
         },
         {
