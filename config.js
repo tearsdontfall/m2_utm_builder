@@ -34,7 +34,13 @@ window.UTM_CONFIG = {
         "nazarovaiv",
         "petrovpd",
         "poberezhnyukap",
-        "taninaas"
+        "taninaas",
+        "derevnina",
+        "bitsoyev",
+        "medyakova",
+        "krukova",
+        "zaytseva",
+        "poryvaeva"
     ],
 
     // ───────────── Потоки разметки (вкладка new_entities) ─────────────
